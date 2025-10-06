@@ -201,6 +201,64 @@ namespace TimeAndSaleIndi
             }
         }
 
+        /// <summary>
+        /// Returns the minimum and maximum values in the buffer (optimized for double).
+        /// </summary>
+        public (double Min, double Max) GetMinMaxDouble()
+        {
+            if (_count == 0)
+                throw new InvalidOperationException("Buffer is empty.");
+
+            if (typeof(T) != typeof(double) || typeof(T) != typeof(int))
+                throw new InvalidOperationException("GetMinMax works only for double or int buffers.");
+
+            double min = double.MaxValue;
+            double max = double.MinValue;
+
+            // Scorri solo gli elementi effettivamente popolati
+            int start = (_head - _count + _size) % _size;
+            for (int i = 0; i < _count; i++)
+            {
+                int idx = (start + i) % _size;
+                double value = Convert.ToDouble(_buffer[idx]);
+
+                if (value < min)
+                    min = value;
+                if (value > max)
+                    max = value;
+            }
+
+            return (min, max);
+        }
+
+        public (int Min, int Max) GetMinMaxInt()
+        {
+            if (_count == 0)
+                throw new InvalidOperationException("Buffer is empty.");
+
+            if (typeof(T) != typeof(int))
+                throw new InvalidOperationException("GetMinMax works only for double or int buffers.");
+
+            int min = int.MaxValue;
+            int max = int.MinValue;
+
+            // Scorri solo gli elementi effettivamente popolati
+            int start = (_head - _count + _size) % _size;
+            for (int i = 0; i < _count; i++)
+            {
+                int idx = (start + i) % _size;
+                int value = Convert.ToInt32(_buffer[idx]);
+
+                if (value < min)
+                    min = value;
+                if (value > max)
+                    max = value;
+            }
+
+            return (min, max);
+        }
+
+
         /// <inheritdoc/>
         public IEnumerable<T> GetOrderBy<TKey>(Func<T, TKey> selector) where TKey : IComparable<TKey>
         {

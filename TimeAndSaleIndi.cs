@@ -120,8 +120,8 @@ namespace TimeAndSaleIndi
 
             if (args.Reason == UpdateReason.NewTick)
             {
-                this._OnRunColor = (this.Close() > this.Open() && this._BuyDivergentBuffer.IsFull) ? this.ColorBuy
-                    : (this.Close() < this.Open() && this._SellDivergentBuffer.IsFull) ? this.ColorSell : Color.White;
+                this._OnRunColor = (this.Close() > this.Open() && ValidateArrays(Side.Buy)) ? this.ColorBuy
+                    : (this.Close() < this.Open() && ValidateArrays(Side.Sell)) ? this.ColorSell : Color.White;
             }
 
         }
@@ -145,13 +145,31 @@ namespace TimeAndSaleIndi
             if (this.HistoricalData[1][PriceType.Close] == this.HistoricalData[1][PriceType.Open])
                 return;
             if (this.HistoricalData[1][PriceType.Close] > this.HistoricalData[1][PriceType.Open])
-                if (this._BuyDivergentBuffer.IsFull)
+                if (ValidateArrays(Side.Buy))
                     this._BuyDivergentCandles.Add(Array.IndexOf(this.HistoricalData.ToArray(), this.HistoricalData[1]));
             if (this.HistoricalData[1][PriceType.Close] < this.HistoricalData[1][PriceType.Open])
-                if (this._SellDivergentBuffer.IsFull)
+                if (ValidateArrays(Side.Sell))
                     this._SellDivergentCandles.Add(Array.IndexOf(this.HistoricalData.ToArray(), this.HistoricalData[1]));
             _SellDivergentBuffer.Clear();
             _BuyDivergentBuffer.Clear();
+        }
+
+        private bool ValidateArrays(Side side)
+        {
+            RingBuffer<double> validaTeFor = side == Side.Buy ? _BuyDivergentBuffer : _SellDivergentBuffer;
+            if (validaTeFor.IsFull)
+            {
+                RingBuffer<double> validateTo = side == Side.Sell ? _BuyDivergentBuffer : _SellDivergentBuffer;
+                var min = validaTeFor.GetItems().Select(x => Math.Abs(x)).Min();
+                var max = validateTo.GetItems().Select(x => Math.Abs(x)).Max();
+                if (min > max)
+                    return true;
+                else
+                    return false;
+
+            }
+            else
+                return false;
         }
 
         public override void OnPaintChart(PaintChartEventArgs args)

@@ -8,7 +8,7 @@ using TradingPlatform.BusinessLayer;
 
 namespace TimeAndSaleIndi
 {
-    public enum  BaseFilter
+    public enum BaseFilter
     {
         Size,
         Time,
@@ -29,7 +29,7 @@ namespace TimeAndSaleIndi
         private RingBuffer<double> _BuyDivergentBuffer;
         public BaseFilter Filter = BaseFilter.Size;
         //TODO > rendere configurabili i filtri tramite settings
-        [InputParameter("Filter Size",0, 0.0001, double.MaxValue, 0.0001, 4)]
+        [InputParameter("Filter Size", 0, 0.0001, double.MaxValue, 0.0001, 4)]
         public double FilterSize = 0.01;
         [InputParameter("Display Buyers", 1)]
         public bool DisplayBuiers = true;
@@ -42,6 +42,8 @@ namespace TimeAndSaleIndi
         [InputParameter("Color Sell", 5)]
         public Color ColorSell = Color.Orange;
         private Color _OnRunColor = Color.White;
+        [InputParameter("Color Log", 5)]
+        private bool logColors = false;
 
         public TimeAndSaleIndi()
             : base()
@@ -118,11 +120,11 @@ namespace TimeAndSaleIndi
             if (args.Reason == UpdateReason.NewBar)
                 this.ValidateBars();
 
-            if (args.Reason == UpdateReason.NewTick)
-            {
-                this._OnRunColor = (this.Close() > this.Open() && ValidateArrays(Side.Buy)) ? this.ColorBuy
-                    : (this.Close() < this.Open() && ValidateArrays(Side.Sell)) ? this.ColorSell : Color.White;
-            }
+            //if (args.Reason == UpdateReason.NewTick)
+            //{
+            //    this._OnRunColor = (this.Close() > this.Open() && ValidateArrays(Side.Buy)) ? this.ColorBuy
+            //        : (this.Close() < this.Open() && ValidateArrays(Side.Sell)) ? this.ColorSell : Color.White;
+            //}
 
         }
 
@@ -150,6 +152,20 @@ namespace TimeAndSaleIndi
             if (this.HistoricalData[1][PriceType.Close] < this.HistoricalData[1][PriceType.Open])
                 if (ValidateArrays(Side.Sell))
                     this._SellDivergentCandles.Add(Array.IndexOf(this.HistoricalData.ToArray(), this.HistoricalData[1]));
+
+            for (int i = 0; i < this._SellDivergentBuffer.ToArray().Count(); i++)
+            {
+                Core.Instance.Loggers.Log($"sellers {this._SellDivergentBuffer[i]}");
+            }
+
+            for (int i = 0; i < this._BuyDivergentBuffer.ToArray().Count(); i++)
+            {
+                Core.Instance.Loggers.Log($"buy {this._BuyDivergentBuffer[i]}");
+            }
+
+            Core.Instance.Loggers.Log($"buy condiction {ValidateArrays(Side.Buy)}");
+            Core.Instance.Loggers.Log($"sell condiction {ValidateArrays(Side.Sell)}");
+
             _SellDivergentBuffer.Clear();
             _BuyDivergentBuffer.Clear();
         }
@@ -221,11 +237,18 @@ namespace TimeAndSaleIndi
                         );
 
 
+
                         if (i == this.HistoricalData.Count - 1)
-                            using (var brush = new SolidBrush(_OnRunColor))
+                        {
+                            Color activeColor = (this.Close() > this.Open() && ValidateArrays(Side.Buy)) ? this.ColorBuy
+                                    : (this.Close() < this.Open() && ValidateArrays(Side.Sell)) ? this.ColorSell : Color.White;
+                            if (this.logColors)
+                                Core.Instance.Loggers.Log(activeColor.Name, LoggingLevel.Trading);
+                            using (var brush = new SolidBrush(activeColor))
                             {
                                 graphics.FillRectangle(brush, rect);
                             }
+                        }
                         else if (this.DisplayBuiers && this._BuyDivergentCandles.Contains(i))
                             using (var brush = new SolidBrush(this.ColorBuy))
                             {

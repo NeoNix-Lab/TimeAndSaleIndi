@@ -44,23 +44,83 @@ namespace TimeAndSaleIndi
         private Color _OnRunColor = Color.White;
         [InputParameter("Color Log", 5)]
         private bool logColors = false;
+        private HistoricalData additionalHd = null;
+        private bool newBarArrived = false;
 
         public TimeAndSaleIndi()
             : base()
         {
             Name = "TimeAndSaleIndi";
             Description = "My indicator's annotation";
+            // Defines line on demand with particular parameters.
+            AddLineSeries("line1", Color.CadetBlue, 1, LineStyle.Solid);
 
             SeparateWindow = false;
-            this.UpdateType = IndicatorUpdateType.OnTick;
+            this.UpdateType = IndicatorUpdateType.OnBarClose;
+
         }
 
         protected override void OnInit()
         {
+            //try
+            //{
+            //    DateTime from = this.HistoricalData.FromTime;
+            //    DateTime to = this.HistoricalData.ToTime;
+            //    HistoryAggregation aggregation = this.HistoricalData.Aggregation;
+            //    this.additionalHd = this.Symbol.GetHistory(aggregation,from);
 
-            this.Symbol.NewLast += this.Symbol_NewLast;
+            //    Core.Instance.Loggers.Log($"oN iNIT from {from} to {to} aggregation {aggregation}", LoggingLevel.Trading);
+            //    this.additionalHd.NewHistoryItem += (s, e) =>
+            //    {
+            //        if (this._check())
+            //            return;
+
+            //        if (this.HistoricalData == null || this.HistoricalData.Count == 0)
+            //            return;
+
+            //        try
+            //        {
+
+            //            this.ValidateBars();
+
+            //            //if (args.Reason == UpdateReason.NewTick)
+            //            //{
+            //            //    this._OnRunColor = (this.Close() > this.Open() && ValidateArrays(Side.Buy)) ? this.ColorBuy
+            //            //        : (this.Close() < this.Open() && ValidateArrays(Side.Sell)) ? this.ColorSell : Color.White;
+            //            //}
+
+            //        }
+            //        catch (Exception ex)
+            //        {
+            //            Core.Instance.Loggers.Log("Source OnUpdate", LoggingLevel.Error);
+            //            Core.Instance.Loggers.Log(ex.Message, LoggingLevel.Error);
+            //        }
+
+            //    };
+            //    this.additionalHd.HistoryItemUpdated += (s, e) =>
+            //    {
+            //        //Core.Instance.Loggers.Log($"additionalHd HistoryItemUpdated {e.Item.TimeLeft} {e.Item.Close}", LoggingLevel.Trading);
+            //    };
+            //}
+            //catch (Exception ex)
+            //{
+            //    Core.Instance.Loggers.Log("oN iNIT" + ex.Message, LoggingLevel.Error);
+            //}
+
+            try
+            {
+                this.newBarArrived = false;
+                this.HistoricalData.Symbol.NewLast -= this.Symbol_NewLast;
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
             _SellDivergentBuffer = new RingBuffer<double>(ContinuosCount);
             _BuyDivergentBuffer = new RingBuffer<double>(ContinuosCount);
+            this._BuyDivergentCandles = new List<int>();
+            this._SellDivergentCandles = new List<int>();
         }
 
         private void RetriveAndUpdateBuffers(Last last, Func<Last, bool> filter)
@@ -109,22 +169,60 @@ namespace TimeAndSaleIndi
 
         private void Symbol_NewLast(Symbol symbol, Last last)
         {
+            if (this._check())
+                return;
+
+            //if (this.newBarArrived)
+            //{
+            //    this.newBarArrived = false;
+            //    _SellDivergentBuffer.Clear();
+            //    _BuyDivergentBuffer.Clear();
+            //}
             RetriveAndUpdateBuffers(last, this.FilterBySize);
         }
 
         protected override void OnUpdate(UpdateArgs args)
         {
+            this.newBarArrived = true;
             if (this._check())
                 return;
 
-            if (args.Reason == UpdateReason.NewBar)
-                this.ValidateBars();
+            if (this.HistoricalData == null || this.HistoricalData.Count == 0)
+                return;
 
-            //if (args.Reason == UpdateReason.NewTick)
-            //{
-            //    this._OnRunColor = (this.Close() > this.Open() && ValidateArrays(Side.Buy)) ? this.ColorBuy
-            //        : (this.Close() < this.Open() && ValidateArrays(Side.Sell)) ? this.ColorSell : Color.White;
-            //}
+            try
+            {
+                if (!this.newBarArrived)
+                {
+                    this.HistoricalData.Symbol.NewLast += this.Symbol_NewLast;
+                    this.newBarArrived = true;
+                }
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+
+            try
+            {
+                if (args.Reason == UpdateReason.NewBar)
+                    this.ValidateBars();
+
+                //if (args.Reason == UpdateReason.NewTick)
+                //{
+                //    this._OnRunColor = (this.Close() > this.Open() && ValidateArrays(Side.Buy)) ? this.ColorBuy
+                //        : (this.Close() < this.Open() && ValidateArrays(Side.Sell)) ? this.ColorSell : Color.White;
+                //}
+
+            }
+            catch (Exception ex)
+            {
+                Core.Instance.Loggers.Log("Source OnUpdate", LoggingLevel.Error);
+                Core.Instance.Loggers.Log(ex.Message, LoggingLevel.Error);
+            }
+
+
 
         }
 
@@ -132,6 +230,11 @@ namespace TimeAndSaleIndi
         {
             base.Dispose();
             this.Symbol.NewLast -= this.Symbol_NewLast;
+            this._BuyDivergentCandles.Clear();
+            this._SellDivergentCandles.Clear();
+            this._BuyDivergentBuffer.Clear();
+            this._SellDivergentBuffer.Clear();
+            this.additionalHd?.Dispose();
         }
 
         private bool FilterBySize(Last last)
@@ -144,6 +247,8 @@ namespace TimeAndSaleIndi
 
         private void ValidateBars()
         {
+            if(this.HistoricalData?.Count < 10)
+                return;
             if (this.HistoricalData[1][PriceType.Close] == this.HistoricalData[1][PriceType.Open])
                 return;
             if (this.HistoricalData[1][PriceType.Close] > this.HistoricalData[1][PriceType.Open])
@@ -176,6 +281,8 @@ namespace TimeAndSaleIndi
             if (validaTeFor.IsFull)
             {
                 RingBuffer<double> validateTo = side == Side.Sell ? _BuyDivergentBuffer : _SellDivergentBuffer;
+                if (validateTo.Count == 0)
+                    return true;
                 var min = validaTeFor.GetItems().Select(x => Math.Abs(x)).Min();
                 var max = validateTo.GetItems().Select(x => Math.Abs(x)).Max();
                 if (min > max)
@@ -190,79 +297,89 @@ namespace TimeAndSaleIndi
 
         public override void OnPaintChart(PaintChartEventArgs args)
         {
-            base.OnPaintChart(args);
+            //base.OnPaintChart(args);
 
             if (this.CurrentChart == null)
                 return;
 
-            Graphics graphics = args.Graphics;
-            var mainWindow = this.CurrentChart.MainWindow;
+            //try
+            //{
+            //    Graphics graphics = args.Graphics;
+            //    var mainWindow = this.CurrentChart.MainWindow;
 
-            // Get left and right time from visible part
-            DateTime leftTime = mainWindow.CoordinatesConverter.GetTime(mainWindow.ClientRectangle.Left);
-            DateTime rightTime = mainWindow.CoordinatesConverter.GetTime(mainWindow.ClientRectangle.Right);
+            //    // Get left and right time from visible part
+            //    DateTime leftTime = mainWindow.CoordinatesConverter.GetTime(mainWindow.ClientRectangle.Left);
+            //    DateTime rightTime = mainWindow.CoordinatesConverter.GetTime(mainWindow.ClientRectangle.Right);
 
-            // Convert left and right time to index of bar
-            int leftIndex = (int)mainWindow.CoordinatesConverter.GetBarIndex(leftTime);
-            int rightIndex = (int)Math.Ceiling(mainWindow.CoordinatesConverter.GetBarIndex(rightTime));
+            //    // Convert left and right time to index of bar
+            //    int leftIndex = (int)mainWindow.CoordinatesConverter.GetBarIndex(leftTime);
+            //    int rightIndex = (int)Math.Ceiling(mainWindow.CoordinatesConverter.GetBarIndex(rightTime));
 
-            for (int i = leftIndex; i <= rightIndex; i++)
-            {
+            //    for (int i = leftIndex; i <= rightIndex; i++)
+            //    {
 
-                if (i > 0 && i < this.HistoricalData.Count && this.HistoricalData[i, SeekOriginHistory.Begin] is HistoryItemBar bar)
-                {
-                    if ((this.DisplayBuiers && this._BuyDivergentCandles.Contains(i)) ||
-                        (this.DisplaySellers && this._SellDivergentCandles.Contains(i)) ||
-                        i == this.HistoricalData.Count - 1)
-                    {
-                        // coordinate X del centro barra
-                        double barCenterX = mainWindow.CoordinatesConverter.GetChartX(bar.TimeLeft) + this.CurrentChart.BarsWidth / 2.0;
+            //        if (i > 0 && i < this.HistoricalData.Count && this.HistoricalData[i, SeekOriginHistory.Begin] is HistoryItemBar bar)
+            //        {
+            //            if ((this.DisplayBuiers && this._BuyDivergentCandles.Contains(i)) ||
+            //                (this.DisplaySellers && this._SellDivergentCandles.Contains(i)) ||
+            //                i == this.HistoricalData.Count - 1)
+            //            {
+            //                // coordinate X del centro barra
+            //                double barCenterX = mainWindow.CoordinatesConverter.GetChartX(bar.TimeLeft) + this.CurrentChart.BarsWidth / 2.0;
 
-                        // coordinate Y per High e Low
-                        double yHigh = mainWindow.CoordinatesConverter.GetChartY(bar.High);
-                        double yLow = mainWindow.CoordinatesConverter.GetChartY(bar.Low);
+            //                // coordinate Y per High e Low
+            //                double yHigh = mainWindow.CoordinatesConverter.GetChartY(bar.High);
+            //                double yLow = mainWindow.CoordinatesConverter.GetChartY(bar.Low);
 
-                        // larghezza del rettangolo = 10% della larghezza barra
-                        double rectWidth = Math.Max(2, this.CurrentChart.BarsWidth * 0.05);
+            //                // larghezza del rettangolo = 10% della larghezza barra
+            //                double rectWidth = Math.Max(2, this.CurrentChart.BarsWidth * 0.05);
 
-                        // altezza del rettangolo = distanza tra High e Low
-                        double rectHeight = yLow - yHigh; // attenzione: Y cresce verso il basso
+            //                // altezza del rettangolo = distanza tra High e Low
+            //                double rectHeight = yLow - yHigh; // attenzione: Y cresce verso il basso
 
-                        // rettangolo centrato
-                        RectangleF rect = new RectangleF(
-                            (float)(barCenterX - rectWidth / 2.0),
-                            (float)yHigh,
-                            (float)rectWidth,
-                            (float)rectHeight
-                        );
+            //                // rettangolo centrato
+            //                RectangleF rect = new RectangleF(
+            //                    (float)(barCenterX - rectWidth / 2.0),
+            //                    (float)yHigh,
+            //                    (float)rectWidth,
+            //                    (float)rectHeight
+            //                );
 
 
 
-                        if (i == this.HistoricalData.Count - 1)
-                        {
-                            Color activeColor = (this.Close() > this.Open() && ValidateArrays(Side.Buy)) ? this.ColorBuy
-                                    : (this.Close() < this.Open() && ValidateArrays(Side.Sell)) ? this.ColorSell : Color.White;
-                            if (this.logColors)
-                                Core.Instance.Loggers.Log(activeColor.Name, LoggingLevel.Trading);
-                            using (var brush = new SolidBrush(activeColor))
-                            {
-                                graphics.FillRectangle(brush, rect);
-                            }
-                        }
-                        else if (this.DisplayBuiers && this._BuyDivergentCandles.Contains(i))
-                            using (var brush = new SolidBrush(this.ColorBuy))
-                            {
-                                graphics.FillRectangle(brush, rect);
-                            }
-                        else if (this.DisplaySellers && this._SellDivergentCandles.Contains(i))
-                            using (var brush = new SolidBrush(this.ColorSell))
-                            {
-                                graphics.FillRectangle(brush, rect);
-                            }
-                    }
+            //                if (i == this.HistoricalData.Count - 1)
+            //                {
+            //                    Color activeColor = (this.Close() > this.Open() && ValidateArrays(Side.Buy)) ? this.ColorBuy
+            //                            : (this.Close() < this.Open() && ValidateArrays(Side.Sell)) ? this.ColorSell : Color.White;
+            //                    if (this.logColors)
+            //                        Core.Instance.Loggers.Log(activeColor.Name, LoggingLevel.Trading);
+            //                    using (var brush = new SolidBrush(activeColor))
+            //                    {
+            //                        graphics.FillRectangle(brush, rect);
+            //                    }
+            //                }
+            //                else if (this.DisplayBuiers && this._BuyDivergentCandles.Contains(i))
+            //                    using (var brush = new SolidBrush(this.ColorBuy))
+            //                    {
+            //                        graphics.FillRectangle(brush, rect);
+            //                    }
+            //                else if (this.DisplaySellers && this._SellDivergentCandles.Contains(i))
+            //                    using (var brush = new SolidBrush(this.ColorSell))
+            //                    {
+            //                        graphics.FillRectangle(brush, rect);
+            //                    }
+            //            }
 
-                }
-            }
+            //        }
+            //    }
+            //}
+            //catch (Exception ex)
+            //{
+
+            //    Core.Instance.Loggers.Log($"Source OnPaintChart ex.message {ex.Message}", LoggingLevel.Error);
+            //}
+
+            
         }
 
         private void Process()

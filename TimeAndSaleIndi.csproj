@@ -12,23 +12,18 @@
     <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <OutputPath>C:\Users\tagli\Desktop\Quantower\TradingPlatform\v1.144.12\..\..\Settings\Scripts\Indicators\TimeAndSaleIndi</OutputPath>
+    <OutputPath>A:\Quantower2\Quantower\TradingPlatform\v1.144.9\..\..\Settings\Scripts\Indicators\TimeAndSaleIndi</OutputPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <OutputPath>C:\Users\tagli\Desktop\Quantower\TradingPlatform\v1.144.12\..\..\Settings\Scripts\Indicators\TimeAndSaleIndi</OutputPath>
+    <OutputPath>A:\Quantower2\Quantower\TradingPlatform\v1.144.9\..\..\Settings\Scripts\Indicators\TimeAndSaleIndi</OutputPath>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="System.Drawing.Common" Version="9.0.9" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="TradingPlatform.BusinessLayer">
-      <HintPath>C:\Users\tagli\Desktop\Quantower\TradingPlatform\v1.144.12\bin\TradingPlatform.BusinessLayer.dll</HintPath>
+      <HintPath>A:\Quantower2\Quantower\TradingPlatform\v1.144.9\bin\TradingPlatform.BusinessLayer.dll</HintPath>
       <Private>False</Private>
-    </Reference>
-  </ItemGroup>
-  <ItemGroup>
-    <Reference Include="PowerTradesProcessingLib">
-      <HintPath>C:\Users\tagli\Desktop\Quantower\TradingPlatform\v1.144.12\bin\PowerTradesProcessingLib.dll</HintPath>
     </Reference>
   </ItemGroup>
 </Project>

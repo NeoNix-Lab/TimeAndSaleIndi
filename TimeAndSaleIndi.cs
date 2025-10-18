@@ -8,8 +8,6 @@ using System.Reflection.Metadata.Ecma335;
 using System.Threading;
 using System.Threading.Tasks;
 using TradingPlatform.BusinessLayer;
-using PowerTradesProcessing.Services;
-using PowerTradesProcessing.Async;
 
 namespace TimeAndSaleIndi
 {
@@ -25,7 +23,6 @@ namespace TimeAndSaleIndi
     {
         // ===== Async infra (externalized) =====
         private CancellationTokenSource cts;
-        private PowerTradesProcessingService _ptService;
         private bool _ptServiceAcquired;
 
         // ===== State =====
@@ -66,7 +63,7 @@ namespace TimeAndSaleIndi
         private bool logColors = false;
 
         [InputParameter("Print each Trade", 7)]
-        private bool printEach = true;
+        private bool printEach = false;
 
         // ===== Internals =====
         private HistoricalData powerTradesHistoricalData;
@@ -99,7 +96,7 @@ namespace TimeAndSaleIndi
 
             this.HistoricalData.Symbol.NewLast += this.Symbol_NewLast;
 
-            //this.PTRequest();
+            this.PTRequest();
 
             this._toPrint = $"Initialized";
         }
@@ -119,11 +116,10 @@ namespace TimeAndSaleIndi
 
             if (_ptServiceAcquired)
             {
-                _ptService?.Release();
                 _ptServiceAcquired = false;
             }
 
-            base.Clear();
+            //base.Clear();
         }
 
         public override void Dispose()
@@ -135,11 +131,10 @@ namespace TimeAndSaleIndi
 
                 if (_ptServiceAcquired)
                 {
-                    _ptService?.Release();
                     _ptServiceAcquired = false;
                 }
 
-                base.Clear();
+                //base.Clear();
             }
             catch
             {
@@ -317,7 +312,7 @@ namespace TimeAndSaleIndi
                 }
             }
 
-            this.SetValue(this.Count);
+            //this.SetValue(this.Count);
 
 
         }
@@ -385,8 +380,8 @@ namespace TimeAndSaleIndi
             //    await Task.Run(() => this.ProcessPowerTrades(), ct);
             //}, TaskPriority.High);
 
-            if (this.isProcessing)
-                return;
+            //if (this.isProcessing)
+            //    return;
 
             Task.Run(() =>
             {
@@ -404,6 +399,8 @@ namespace TimeAndSaleIndi
 
             this._toPrint = $"Creating Dedicated RingBuffer ... ";
             int conto = this.HistoricalData.Count;
+
+            //powerTradesHistoricalData = this.Symbol.GetHistory(Period.TICK1, HistoryType.Last, HistoricalData.FromTime);
 
 
             for (int i = 0; i < this.HistoricalData.Count; i++)
@@ -439,6 +436,7 @@ namespace TimeAndSaleIndi
                     //    .ToList();
 
                     var buffers = this.RetriveAndUpdateHistoryBuffers(powerTradesHistoricalData.ToList(), this.FilterBySize);
+                    //var buffers = this.RetriveAndUpdateHistoryBuffers(items, this.FilterBySize);
 
                     bool bull = this.ValidateArrays(Side.Buy, buffers.buyers, buffers.sellers);
                     bool bear = this.ValidateArrays(Side.Sell, buffers.buyers, buffers.sellers);

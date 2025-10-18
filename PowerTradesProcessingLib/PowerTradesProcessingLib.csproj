@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AssemblyName>PowerTradesProcessingLib</AssemblyName>
+    <RootNamespace>PowerTradesProcessing</RootNamespace>
+  </PropertyGroup>
+
+  <!-- Deploy the library next to the indicator output so Quantower can load it -->
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <OutputPath>C:\Users\tagli\Desktop\Quantower\TradingPlatform\v1.144.12\bin</OutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <OutputPath>C:\Users\tagli\Desktop\Quantower\TradingPlatform\v1.144.12\bin</OutputPath>
+  </PropertyGroup>
+</Project>

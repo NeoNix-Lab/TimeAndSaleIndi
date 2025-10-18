@@ -8,6 +8,8 @@
     <AlgoType>Indicator</AlgoType>
     <AssemblyName>TimeAndSaleIndi</AssemblyName>
     <RootNamespace>TimeAndSaleIndi</RootNamespace>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <OutputPath>C:\Users\tagli\Desktop\Quantower\TradingPlatform\v1.144.12\..\..\Settings\Scripts\Indicators\TimeAndSaleIndi</OutputPath>
@@ -22,6 +24,11 @@
     <Reference Include="TradingPlatform.BusinessLayer">
       <HintPath>C:\Users\tagli\Desktop\Quantower\TradingPlatform\v1.144.12\bin\TradingPlatform.BusinessLayer.dll</HintPath>
       <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="PowerTradesProcessingLib">
+      <HintPath>C:\Users\tagli\Desktop\Quantower\TradingPlatform\v1.144.12\bin\PowerTradesProcessingLib.dll</HintPath>
     </Reference>
   </ItemGroup>
 </Project>

@@ -8,7 +8,7 @@ using TradingPlatform.BusinessLayer;
 
 namespace TimeAndSaleIndi
 {
-    public class NewTeS : Indicator
+    public class NewTeSHistorical : Indicator
     {
         private CancellationTokenSource _cts;
         private Task _backgroundTask;
@@ -41,7 +41,7 @@ namespace TimeAndSaleIndi
         [InputParameter("Color Trapped", 6)]
         public Color ColorTrapped = Color.DimGray;
 
-        public NewTeS()
+        public NewTeSHistorical()
         {
             Name = "NewTeS (Historical)";
             Description = "Historical time & sales divergence detector";
@@ -92,6 +92,7 @@ namespace TimeAndSaleIndi
         }
 
         // ===== OFFLINE PROCESSING =====
+
         private async Task ProcessPowerTradesAsync(CancellationToken ct)
         {
             if (HistoricalData == null || HistoricalData.Count < 2)
@@ -102,15 +103,21 @@ namespace TimeAndSaleIndi
                 _isProcessing = true;
                 _progress = 0;
 
-                DateTime start = HistoricalData.First().TimeLeft;
-                var allTicks = Symbol.GetHistory(Period.TICK1, HistoryType.Last, start)
+                // ====== Snapshot immutabile ======
+                DateTime start = HistoricalData.FromTime;
+                DateTime end = HistoricalData.ToTime;
+                var barsSnapshot = HistoricalData.ToArray(); // copia statica delle barre
+
+                // copia statica dei tick
+                var allTicks = Symbol.GetHistory(Period.TICK1, HistoryType.Last, start, end)
                     .OfType<HistoryItemLast>()
                     .ToList();
 
+                // buffer locali per barra
                 var buyers = new RingBuffer<double>(ContinuousCount);
                 var sellers = new RingBuffer<double>(ContinuousCount);
 
-                int totalBars = HistoricalData.Count;
+                int totalBars = barsSnapshot.Length;
                 int step = Math.Max(1, totalBars / 200);
 
                 for (int i = 0; i < totalBars - 1; i++)
@@ -118,23 +125,26 @@ namespace TimeAndSaleIndi
                     if (ct.IsCancellationRequested)
                         break;
 
-                    if (HistoricalData[i, SeekOriginHistory.Begin] is not HistoryItemBar bar)
-                        continue;
-
+                    var bar = barsSnapshot[i];
                     buyers.Clear();
                     sellers.Clear();
 
-                    var ticks = allTicks.Where(t => t.TimeLeft >= bar.TimeLeft && t.TimeLeft < bar.TimeRight);
+                    // snapshot locale per tick della barra
+                    var ticks = allTicks
+                        .Where(t => t.TimeLeft >= bar.TimeLeft && t.TimeLeft < bar.TimeLeft.AddTicks(Math.Abs(bar.TicksRight - bar.TicksLeft)))
+                        .ToList();
+
                     foreach (var t in ticks)
                     {
                         if (t.Volume < FilterSize)
                             continue;
 
-                        if ((t.TickDirection == TickDirection.NotSet || t.TickDirection == TickDirection.NotSet)
+                        if ((t.TickDirection == TickDirection.NotSet)
                             && (t.AggressorFlag == AggressorFlag.None || t.AggressorFlag == AggressorFlag.NotSet))
                             continue;
 
                         var buffer = t.AggressorFlag == AggressorFlag.Buy ? buyers : sellers;
+
                         if (buffer.IsFull)
                         {
                             double min = buffer.GetItems().Select(Math.Abs).Min();
@@ -153,18 +163,22 @@ namespace TimeAndSaleIndi
                     bool bull = ValidationHelper.ValidateArrays(Side.Buy, buyers, sellers);
                     bool bear = ValidationHelper.ValidateArrays(Side.Sell, buyers, sellers);
 
-                    double o = bar.Open;
-                    double c = bar.Close;
+                    double o = bar[PriceType.Open];
+                    double c = bar[PriceType.Close];
 
                     if (c > o)
                     {
-                        if (bull && DisplayBuyers) _buyCandles.Add(i);
-                        else if (bear) _trappedCandles.Add(i);
+                        if (bull && DisplayBuyers)
+                            _buyCandles.Add(i);
+                        else if (bear)
+                            _trappedCandles.Add(i);
                     }
                     else if (c < o)
                     {
-                        if (bear && DisplaySellers) _sellCandles.Add(i);
-                        else if (bull) _trappedCandles.Add(i);
+                        if (bear && DisplaySellers)
+                            _sellCandles.Add(i);
+                        else if (bull)
+                            _trappedCandles.Add(i);
                     }
 
                     if (i % step == 0)
@@ -185,6 +199,8 @@ namespace TimeAndSaleIndi
                 _isProcessing = false;
             }
         }
+
+
 
         // ===== VISUAL =====
         public override void OnPaintChart(PaintChartEventArgs args)
